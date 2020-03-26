@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-import os
+import configparser
 import csv
-import pandas as pd
+import os
 from collections import OrderedDict
 from typing import Dict, List
+
+import pandas as pd
 
 
 class ExonCdsMapper:
@@ -60,65 +62,83 @@ class ExonCdsMapper:
         identifier for a specific type.
         :param dataframe: table of all row entries for a given gene identifier
         :param _type: type of each row entry (e.g. exon:1, cds:1, gene, ...)
-        :return: Dict contains start, stop and strand position of a given entry
+        :return: Dict contains start, stop position and strand orientation of a given entry
         """
-        if not dataframe.loc[group_df["Type"] == _type].empty:
-            entry_values = group_df.loc[dataframe["Type"] == _type].values[0]
+        if not dataframe.loc[dataframe["Type"] == _type].empty:
+            entry_values = dataframe.loc[dataframe["Type"] == _type].values[0]
             start = entry_values[4]
             stop = entry_values[5]
             strand = entry_values[6]
             return {"Start": start, "Stop": stop, "Strand": strand}
 
-    def compare_start_position(self, exon: Dict, cds: Dict) -> (bool, int, str):
-        """
-        Evaluate if given exon and cds start at the same position.
-        :param exon: Dict contains information about strand, start and stop position of a first exon
-        :param cds: Dict contains information about strand, start and stop position of a first cds
-        :return: triple of
-            first value: boolean if start position of first exon/cds are equal
-            second value: start position of first exon
-            third value: char contains strand position (upper: +, lower: -)
-        """
+    def get_first_position(self, gene_part: Dict) -> (str, str):
         # check on which strand the gene sequence is
-        strand = exon["Strand"]
+        strand = gene_part["Strand"]
         if strand == "+":  # define lookup direction
             pos = "Start"  # lookup from left side
         else:
             pos = "Stop"  # lookup from right side
+        return strand, pos
+
+    def compare_start_position(self, exon: Dict, cds: Dict) -> (bool, int, str):
+        """
+        Evaluate if given exon and cds start at the same position.
+        :param exon: Dict contains information about strand orientation, start and stop position of a first exon
+        :param cds: Dict contains information about strand orientation, start and stop position of a first cds
+        :return: triple of
+            first value: boolean if start position of first exon/cds are equal
+            second value: start position of first exon
+            third value: char contains strand orientation (upper: +, lower: -)
+        """
+        # check on which strand the gene sequence is
+        strand, pos = self.get_first_position(exon)
         if exon[pos] == cds[pos]:
             return True, exon[pos], strand
         else:
             return False, None, None
 
 
-if __name__ == "__main__":
-    # adjust path for your system
-    data_path = "/home/fherrmann/Dokumente/13.Semester/Programming in Genome Research/project/data"
-    gff_path = os.path.join(data_path, "Araport11_GFF3_genes_transposons.201606.gff")
-    out_path = os.path.join(os.getcwd().split("src")[0], "output_data/matching_exon_cds.tsv")
+def main():
+    # adjust data_path for your system in config.ini
+    config = configparser.ConfigParser()
+    config.read(os.path.join(os.getcwd().split("src")[0], "config.ini"))
+    data_path = config["DATA_PATH"]["path"]
+    debug_mode = config["DEBUG_MODE"]["debug"]
 
-    mapper = ExonCdsMapper(path=gff_path)
-    df = pd.DataFrame(data=mapper.extract_input_from_file())
+    gff_path = os.path.join(data_path, "Araport11_GFF3_genes_transposons.201606.gff")
+    all_out_path = os.path.join(os.getcwd().split("src")[0], "output_data/all_exon.tsv")
+    matching_out_path = os.path.join(os.getcwd().split("src")[0], "output_data/matching_exon_cds.tsv")
+
+    exon_cds_mapper = ExonCdsMapper(path=gff_path)
+    df = pd.DataFrame(data=exon_cds_mapper.extract_input_from_file())
     # df.set_index("ID", inplace=True)
 
-    matching_list = []
-    # group by domain name to get dataframe for each gene
-    for group in df.groupby(["Domain"]):
-        # print(group[1].query("Type == exon:1")["Start"])
-        gene_identifier = group[0]
-        group_df = group[1]  # single gene dataframe
-        first_exon = mapper.extract_values_from_df(group_df, "exon:1")
-        first_cds = mapper.extract_values_from_df(group_df, "CDS:1")
-        # append gene identifiers to list, if an exon and cds exist for the specific gene sequence
-        if first_exon and first_cds:
-            is_equal, pos, strand = mapper.compare_start_position(first_exon, first_cds)
-            if is_equal:
-                print(f"GeneIdentifier: {gene_identifier}, Start: {pos}, Strand: {strand}")  # remove to improve speed
-                matching_list.append({"GeneIdentifier": gene_identifier, "Start": pos, "Strand": strand})
-
-    # write matching gene identifiers into output file
-    with open(out_path, 'w', newline='') as file:
+    with open(matching_out_path, 'w', newline='') as match_file, open(all_out_path, 'w', newline='') as all_file:
         fieldnames = ["GeneIdentifier", "Start", "Strand"]
-        writer = csv.DictWriter(file, fieldnames=fieldnames, delimiter='\t')
-        writer.writeheader()
-        writer.writerows(matching_list)
+        # write all positions of first exon into file
+        all_writer = csv.DictWriter(all_file, fieldnames=fieldnames, delimiter='\t')
+        all_writer.writeheader()
+        match_writer = csv.DictWriter(match_file, fieldnames=fieldnames, delimiter='\t')
+        match_writer.writeheader()
+
+        # group by domain name to get dataframe for each gene
+        for group in df.groupby(["Domain"]):
+            gene_identifier = group[0]
+            group_df = group[1]  # single gene dataframe
+            first_exon = exon_cds_mapper.extract_values_from_df(group_df, "exon:1")
+            first_cds = exon_cds_mapper.extract_values_from_df(group_df, "CDS:1")
+
+            if first_exon:
+                strand, pos = exon_cds_mapper.get_first_position(first_exon)
+                all_writer.writerow({"GeneIdentifier": gene_identifier, "Start": first_exon[pos], "Strand": strand})
+
+            # append gene identifiers to list, if an exon and cds exist for the specific gene sequence
+            if first_exon and first_cds:
+                is_equal, pos, strand = exon_cds_mapper.compare_start_position(first_exon, first_cds)
+                if is_equal:
+                    if debug_mode: print(f"GeneIdentifier: {gene_identifier}, Start: {pos}, Strand: {strand}")
+                    match_writer.writerow({"GeneIdentifier": gene_identifier, "Start": pos, "Strand": strand})
+
+
+if __name__ == "__main__":
+    main()
