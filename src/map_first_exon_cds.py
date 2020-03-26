@@ -88,7 +88,7 @@ class ExonCdsMapper:
         :return: triple of
             first value: boolean if start position of first exon/cds are equal
             second value: start position of first exon
-            third value: char contains strand orientation (upper: +, lower: -)
+            third value: char contains strand orientation (forward: +, reverse: -)
         """
         # check on which strand the gene sequence is
         strand, pos = self.get_first_position(exon)
@@ -103,7 +103,7 @@ def main():
     config = configparser.ConfigParser()
     config.read(os.path.join(os.getcwd().split("src")[0], "config.ini"))
     data_path = config["DATA_PATH"]["path"]
-    debug_mode = config["DEBUG_MODE"]["debug"]
+    debug_mode = eval(config["DEBUG_MODE"]["debug"])
 
     gff_path = os.path.join(data_path, "Araport11_GFF3_genes_transposons.201606.gff")
     all_out_path = os.path.join(os.getcwd().split("src")[0], "output_data/all_exon.tsv")
@@ -132,11 +132,12 @@ def main():
                 strand, pos = exon_cds_mapper.get_first_position(first_exon)
                 all_writer.writerow({"GeneIdentifier": gene_identifier, "Start": first_exon[pos], "Strand": strand})
 
-            # append gene identifiers to list, if an exon and cds exist for the specific gene sequence
+            # append gene identifiers to list, if an exon:1 and cds:1 exist for the specific gene sequence
             if first_exon and first_cds:
                 is_equal, pos, strand = exon_cds_mapper.compare_start_position(first_exon, first_cds)
                 if is_equal:
-                    if debug_mode: print(f"GeneIdentifier: {gene_identifier}, Start: {pos}, Strand: {strand}")
+                    if debug_mode:
+                        print(f"GeneIdentifier: {gene_identifier}, Start: {pos}, Strand: {strand}")
                     match_writer.writerow({"GeneIdentifier": gene_identifier, "Start": pos, "Strand": strand})
 
 

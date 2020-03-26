@@ -20,7 +20,7 @@ class MapReads():
     def get_gene_lookup(self, path: str) -> Dict:
         """
         Create a dictionary from a given look up file.
-        File contains columns for GeneIdentifier, start position of exon-1 and strand orientation.
+        File contains columns for GeneIdentifier, start position of exon:1 and strand orientation.
         :param path: str contains path to gff file
         :return: Dict contains GeneIdentifier as key and tuple of start position and strand orientation as value
         """
@@ -33,12 +33,12 @@ class MapReads():
 
     def get_identifier_for_datapoint(self, dataframe: pd.DataFrame, chromosome: str, strand: str, stop: int) -> str:
         """
-        Find corresponding GeneIdentifier For a given datapoint from BAM file.
+        Find corresponding GeneIdentifier For a given data point from BAM file.
         :param dataframe: table of all entries from given gff file
         :param chromosome: str contains name of chromosome (e.g. Chr1)
         :param strand: str contains strand orientation
         :param stop: int contains stop position for given sequence
-        :return: matching GeneIdentifier for datapoint as str
+        :return: matching GeneIdentifier for data point as str
         """
         # select subset for ChrX by grouping dataframe by chromosome name (Chr1, ...) and strand orientation (+, -)
         chr_groups = dataframe.groupby(["Chromosome", "Strand"])
@@ -53,10 +53,10 @@ class MapReads():
                     sort_val = "Stop"
                 subset = group[1].sort_values(by=sort_val)
                 break
-        if not is_group_found:  # raise error if datapoint does not match with given mapping data
+        if not is_group_found:  # raise error if data point does not match with given mapping data
             raise ValueError(f"Chromosome {chromosome} and strand {strand} do not exist in given gff mapping file.\n")
         # select possible subgroup identifiers where read is in range of unique sequence
-        filtered_subset_group = list(subset.query(f"Start <= '{stop}' & Stop >= '{str(stop)}'").groupby(["Domain"]))
+        filtered_subset_group = list(subset.query(f"Start <= '{stop}' & Stop >= '{stop}'").groupby(["Domain"]))
         if len(filtered_subset_group) == 1:
             gene_identifier = filtered_subset_group[0][0]
             return str(gene_identifier)
@@ -68,7 +68,8 @@ class MapReads():
     def get_len_from_cigar(self, cigar: List) -> int:
         """
         Calculate sequence length from a given CIGAR string.
-        :param cigar: str contains
+        CIGAR string is already preformated by pysam (e.g. 129M1S is represented as [(0, 129), (4, 1)])
+        :param cigar: List contains tuples (operation code, number operations)
         :return: length of sequence as int
         """
         seq_len = 0
@@ -84,7 +85,7 @@ def main():
     config = configparser.ConfigParser()
     config.read(os.path.join(os.getcwd().split("src")[0], "config.ini"))
     data_path = config["DATA_PATH"]["path"]
-    debug_mode = config["DEBUG_MODE"]["debug"]
+    debug_mode = eval(config["DEBUG_MODE"]["debug"])
 
     gff_path = os.path.join(data_path, "Araport11_GFF3_genes_transposons.201606.gff")
     bam_path = os.path.join(data_path, "ath.bam")
@@ -104,8 +105,9 @@ def main():
         writer.writeheader()
 
         for row in samfile:
-            if debug_mode: print(row)
-            # get necessary information for datapoint from BAM file
+            if debug_mode:
+                print(row)
+            # get necessary information for data point from BAM file
             q_name = row.query_name  # contains unique identifier
             chr_name = row.reference_name  # chromosome name
             start_align = row.reference_start  # starting position of read
@@ -118,13 +120,14 @@ def main():
                 strand = "+"
                 stop_align = start_align + seq_len  # stopping position of read
 
-            # extract identifier from gff dataframe
+            # extract identifier from gff data frame
             try:
                 gene_identifier = read_mapper.get_identifier_for_datapoint(dataframe=df, chromosome=chr_name,
                                                                            strand=strand,
                                                                            stop=stop_align)
             except Exception as e:
-                if debug_mode: print("Could not find identifier for datapoint: ", e)
+                if debug_mode:
+                    print("Could not find identifier for datapoint: ", e)
                 continue  # skip row if error occurs
 
             # validate if identifier is in mapping file
@@ -132,13 +135,14 @@ def main():
                 exon_start, exon_strand = gene_matching_dict[gene_identifier]
                 exon_start = int(exon_start)
             except Exception as e:
-                if debug_mode: print("GeneIdentifier is not part of mapping file: ", e)
+                if debug_mode:
+                    print("GeneIdentifier is not part of mapping file: ", e)
                 continue  # skip row if error occurs
 
-            # check if starting read position is before exon-1 position of given gene.
+            # check if starting read position is before exon:1 position of given gene.
             if start_align < exon_start and strand == exon_strand:
-                if debug_mode: print(
-                    f"For GeneIdentifier {gene_identifier} read {q_name} ({start_align}) starts before exon-1 ({exon_start})")
+                if debug_mode:
+                    print(f"For GeneIdentifier {gene_identifier} read {q_name} ({start_align}) starts before exon:1 ({exon_start})")
                 writer.writerow({"GeneIdentifier": gene_identifier, "Start_exon_1": exon_start, "Read_QNAME": q_name,
                                  "Read_START": start_align})
 
