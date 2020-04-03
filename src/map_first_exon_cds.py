@@ -51,7 +51,7 @@ class ExonCdsMapper:
                 # set e.g. exon:1 as type name instead of exon
                 if ":" in extracted_values[0]:
                     extracted_values[3] = extracted_values[0].split(":", 1)[1]
-
+                # create dict where keys are entries from column_names list
                 data_dict = OrderedDict((col, extracted_values[idx]) for idx, col in enumerate(column_names))
                 row_list.append(data_dict)
         return row_list
@@ -98,39 +98,50 @@ class ExonCdsMapper:
             return False, None, None
 
 
+def print_statistics(statistics: List):
+    """
+    Print statistics on command line.
+    :param statistics: List contains some statistics
+    :return:
+    """
+    for line in statistics:
+        print(line)
+
+
 def main():
     # adjust data_path for your system in config.ini
     config = configparser.ConfigParser()
     config.read(os.path.join(os.getcwd().split("src")[0], "config.ini"))
     data_path = config["DATA_PATH"]["path"]
     debug_mode = eval(config["DEBUG_MODE"]["debug"])
+    statistics = []  # list contains some statistics which are printed after successful execution
 
     gff_path = os.path.join(data_path, "Araport11_GFF3_genes_transposons.201606.gff")
-    all_out_path = os.path.join(os.getcwd().split("src")[0], "output_data/all_exon.tsv")
     matching_out_path = os.path.join(os.getcwd().split("src")[0], "output_data/matching_exon_cds.tsv")
 
     exon_cds_mapper = ExonCdsMapper(path=gff_path)
     df = pd.DataFrame(data=exon_cds_mapper.extract_input_from_file())
     # df.set_index("ID", inplace=True)
+    statistics.append(f"Total number of entries in gff file: {len(df.index)}")
+    number_matches = 0  # information about number of genes where start positions are equal (exon:1 == cds:1)
 
-    with open(matching_out_path, 'w', newline='') as match_file, open(all_out_path, 'w', newline='') as all_file:
+    with open(matching_out_path, 'w', newline='') as match_file:
         fieldnames = ["GeneIdentifier", "Start", "Strand"]
         # write all positions of first exon into file
-        all_writer = csv.DictWriter(all_file, fieldnames=fieldnames, delimiter='\t')
-        all_writer.writeheader()
         match_writer = csv.DictWriter(match_file, fieldnames=fieldnames, delimiter='\t')
         match_writer.writeheader()
 
-        # group by domain name to get dataframe for each gene
-        for group in df.groupby(["Domain"]):
-            gene_identifier = group[0]
-            group_df = group[1]  # single gene dataframe
-            first_exon = exon_cds_mapper.extract_values_from_df(group_df, "exon:1")
-            first_cds = exon_cds_mapper.extract_values_from_df(group_df, "CDS:1")
+        df_grouped = df.groupby(["Domain"])  # group by domain name to get dataframe for each gene
+        statistics.append(f"Total number of genes: {df_grouped.ngroups}")
 
-            if first_exon:
-                strand, pos = exon_cds_mapper.get_first_position(first_exon)
-                all_writer.writerow({"GeneIdentifier": gene_identifier, "Start": first_exon[pos], "Strand": strand})
+        for group in df_grouped:
+            gene_identifier = group[0]
+            gene_df = group[1]  # single gene dataframe
+            if debug_mode:
+                print(f"gene identifier: {gene_identifier}")
+                print(f"table of gene: {gene_df}")
+            first_exon = exon_cds_mapper.extract_values_from_df(gene_df, "exon:1")
+            first_cds = exon_cds_mapper.extract_values_from_df(gene_df, "CDS:1")
 
             # append gene identifiers to list, if an exon:1 and cds:1 exist for the specific gene sequence
             if first_exon and first_cds:
@@ -138,7 +149,13 @@ def main():
                 if is_equal:
                     if debug_mode:
                         print(f"GeneIdentifier: {gene_identifier}, Start: {pos}, Strand: {strand}")
+                    number_matches += 1
                     match_writer.writerow({"GeneIdentifier": gene_identifier, "Start": pos, "Strand": strand})
+
+        statistics.append(f"Number of matches where start position are equal (exon:1 == cds:1): {number_matches}")
+        statistics.append(
+            f"Proportion of genes with matching exon:1 and cds:1: {round(((number_matches / df_grouped.ngroups) * 100), 2)}%")
+        print_statistics(statistics)
 
 
 if __name__ == "__main__":

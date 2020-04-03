@@ -37,16 +37,23 @@ example entry from given `gff` file:
 Chr1	Araport11	gene	3631	5899	.	+	.	ID=AT1G01010;Name=AT1G01010;Note=NAC domain containing protein 1;symbol=NAC001;some more explanantion ...additional information
 ```
 
-first output file: ./output_data/matching_exon_cds.tsv
-second output file: ./output_data/all_exon.tsv
+output file: ./output_data/matching_exon_cds.tsv
 
-output files are tab separated and contain following columns:
+output file is tab separated and contains following columns:
 ```text
 GeneIdentifier	Start	Strand
 ```
 `GeneIdentifier` is the unique gene identifier (e.g AT1G01010).
 `Start` is an integer value of the starting position from exon-1.
 `Strand` is a string which contains its orientation (forward: +, reverse: -).
+
+In addition some statistics are printed (example):
+```text
+Total number of entries in gff file: 789890
+Total number of genes: 69803
+Number of matches where start position are equal (exon:1 == cds:1): 4201
+Proportion of genes with matching exon:1 and cds:1: 6.02%
+```
 
 # Task 2
 Validate if mapped reads overlap position of first exon in a way they start before the first exon position.

@@ -11,6 +11,7 @@ from map_first_exon_cds import ExonCdsMapper
 
 
 class MapReads():
+
     def __init__(self):
         """
         Init for MapReads.
@@ -89,7 +90,7 @@ def main():
 
     gff_path = os.path.join(data_path, "Araport11_GFF3_genes_transposons.201606.gff")
     bam_path = os.path.join(data_path, "ath.bam")
-    mapping_path = os.path.join(os.getcwd().split("src")[0], "output_data/all_exon.tsv")
+    mapping_path = os.path.join(os.getcwd().split("src")[0], "output_data/matching_exon_cds.tsv")
     out_path = os.path.join(os.getcwd().split("src")[0], "output_data/read_before_first_exon.tsv")
 
     read_mapper = MapReads()
@@ -142,7 +143,8 @@ def main():
             # check if starting read position is before exon:1 position of given gene.
             if start_align < exon_start and strand == exon_strand:
                 if debug_mode:
-                    print(f"For GeneIdentifier {gene_identifier} read {q_name} ({start_align}) starts before exon:1 ({exon_start})")
+                    print(
+                        f"For GeneIdentifier {gene_identifier} read {q_name} ({start_align}) starts before exon:1 ({exon_start})")
                 writer.writerow({"GeneIdentifier": gene_identifier, "Start_exon_1": exon_start, "Read_QNAME": q_name,
                                  "Read_START": start_align})
 
