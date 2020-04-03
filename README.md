@@ -50,10 +50,12 @@ GeneIdentifier	Start	Strand
 
 # Task 2
 Validate if mapped reads overlap position of first exon in a way they start before the first exon position.
-For each read from `bam` file q_name (read identifier), chromosome name (e.g. Chr1), starting/stopping position and strand orientation are extraxted.
+For each read from `bam` file q_name (read identifier), chromosome name (e.g. Chr1), start/stop position and strand orientation are extracted.
 
 First the reads have to be mapped to a gene identifier. This is done by grouping the data from gff file by chromosome name and strand orientation.
-For the resulting subset of same chromosome name and strand orientation the gene identifier is selected where the stop position of the read is between the start and stop position of a data point from gff file. If a match exists the assumtion is made that the read corresponds to gene identifier from matching data point.
+For the resulting subset of same chromosome name and strand orientation the gene identifier is selected where the stop position of the read is between
+the start and stop position of an entry (same as example entry mentioned in Task 1) from specified grouped gff file data.
+If a match exists the assumption is made that the read corresponds to the gene identifier from matching entry.
 
 Second the start position of given read matched by gene identifier is used to validate if the read starts before the exon:1 position (for matching the table `./output_data/all_exon.tsv` is used).
 
@@ -75,8 +77,8 @@ output file is tab separated and contains following columns:
 GeneIdentifier  Start_exon_1    Read_QNAME  Read_START
 ```
 `GeneIdentifier` is the unique gene identifier (e.g AT1G01010).
-`Start_exon_1` is an integer value of the starting position from exon-1.
-`Read_QNMAE` is a string which contains the identifier of a single read from `bam` file.
+`Start_exon_1` is an integer value of the starting position from exon:1.
+`Read_QNAME` is a string which contains the unique identifier of a single read from `bam` file.
 `Read_START` is an integer value of the starting position from specific read.
 
 # Preparation
@@ -84,16 +86,18 @@ Code is written in Python 3.7.4. Required python packages are:
 * pandas==1.0.1
 * pysam == 0.15.4
 
-Install all requirements easily by using pip:
+Install all requirements easily by using pip and the given [requirements.txt](./requirements.txt):
 ```shell script
 pip install -r requirements.txt
 ```
 
 # How to use
-Adjust settings in `config.ini` by setting path to data files and select whether code should be executed in `DEBUG` mode (more prints).
+Adjust settings in `config.ini` by setting path to data files and select whether code should be executed in `DEBUG` mode.
+The debug mode enables multiple prints in the python scripts (e.g. show each row from bam file before processing).
+Because it slows down the processing speed debug mode should only be enabled if the results are not as expected.
 ```text
 [DATA_PATH]
-path = /home/fherrmann/Dokumente/13.Semester/Programming in Genome Research/project/data
+path = /your/path/to/project/data/files
 
 [DEBUG_MODE]
 debug = False
