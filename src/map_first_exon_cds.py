@@ -62,40 +62,49 @@ class ExonCdsMapper:
         identifier for a specific type.
         :param dataframe: table of all row entries for a given gene identifier
         :param _type: type of each row entry (e.g. exon:1, cds:1, gene, ...)
-        :return: Dict contains start, stop position and strand orientation of a given entry
+        :return: Dict contains chromosome, start, stop position and strand orientation of a given entry
         """
         if not dataframe.loc[dataframe["Type"] == _type].empty:
             entry_values = dataframe.loc[dataframe["Type"] == _type].values[0]
+            chromosome = entry_values[2]
             start = entry_values[4]
             stop = entry_values[5]
             strand = entry_values[6]
-            return {"Start": start, "Stop": stop, "Strand": strand}
+            return {"Chromosome": chromosome, "Start": start, "Stop": stop, "Strand": strand}
 
-    def get_first_position(self, gene_part: Dict) -> (str, str):
+    def get_first_position(self, gene_part: Dict) -> (str, str, str):
+        """
+        Depending on the strand orientation return the dict key for start and stop position of a given gene dict.
+        :param gene_part: dict of a gene
+        :return: three strings containing strand orientation (+, -) and start/stop position of gene
+        """
         # check on which strand the gene sequence is
         strand = gene_part["Strand"]
         if strand == "+":  # define lookup direction
-            pos = "Start"  # lookup from left side
+            start_pos = "Start"  # lookup from left side
+            stop_pos = "Stop"
         else:
-            pos = "Stop"  # lookup from right side
-        return strand, pos
+            start_pos = "Stop"  # lookup from right side
+            stop_pos = "Start"
+        return strand, start_pos, stop_pos
 
     def compare_start_position(self, exon: Dict, cds: Dict) -> (bool, int, str):
         """
         Evaluate if given exon and cds start at the same position.
         :param exon: Dict contains information about strand orientation, start and stop position of a first exon
         :param cds: Dict contains information about strand orientation, start and stop position of a first cds
-        :return: triple of
+        :return: quadtruple of
             first value: boolean if start position of first exon/cds are equal
             second value: start position of first exon
-            third value: char contains strand orientation (forward: +, reverse: -)
+            third value: stop position of first exon
+            fourth value: char contains strand orientation (forward: +, reverse: -)
         """
         # check on which strand the gene sequence is
-        strand, pos = self.get_first_position(exon)
-        if exon[pos] == cds[pos]:
-            return True, exon[pos], strand
+        strand, start_pos, stop_pos = self.get_first_position(exon)
+        if exon[start_pos] == cds[start_pos]:
+            return True, exon[start_pos], exon[stop_pos], strand
         else:
-            return False, None, None
+            return False, None, None, None
 
 
 def print_statistics(statistics: List):
@@ -126,7 +135,7 @@ def main():
     number_matches = 0  # information about number of genes where start positions are equal (exon:1 == cds:1)
 
     with open(matching_out_path, 'w', newline='') as match_file:
-        fieldnames = ["GeneIdentifier", "Start", "Strand"]
+        fieldnames = ["GeneIdentifier", "Chromosome", "Start", "Stop", "Strand"]
         # write all positions of first exon into file
         match_writer = csv.DictWriter(match_file, fieldnames=fieldnames, delimiter='\t')
         match_writer.writeheader()
@@ -145,12 +154,12 @@ def main():
 
             # append gene identifiers to list, if an exon:1 and cds:1 exist for the specific gene sequence
             if first_exon and first_cds:
-                is_equal, pos, strand = exon_cds_mapper.compare_start_position(first_exon, first_cds)
+                is_equal, start, stop, strand = exon_cds_mapper.compare_start_position(first_exon, first_cds)
                 if is_equal:
                     if debug_mode:
-                        print(f"GeneIdentifier: {gene_identifier}, Start: {pos}, Strand: {strand}")
+                        print(f"GeneIdentifier: {gene_identifier}, Chromosome: {first_exon['Chromosome']}, Start: {start}, Stop: {stop}, Strand: {strand}")
                     number_matches += 1
-                    match_writer.writerow({"GeneIdentifier": gene_identifier, "Start": pos, "Strand": strand})
+                    match_writer.writerow({"GeneIdentifier": gene_identifier, "Chromosome": first_exon['Chromosome'], "Start": start, "Stop": stop, "Strand": strand})
 
         statistics.append(f"Number of matches where start position are equal (exon:1 == cds:1): {number_matches}")
         statistics.append(

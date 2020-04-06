@@ -41,10 +41,12 @@ output file: ./output_data/matching_exon_cds.tsv
 
 output file is tab separated and contains following columns:
 ```text
-GeneIdentifier	Start	Strand
+GeneIdentifier	Chromosome	Start	Stop	Strand
 ```
-`GeneIdentifier` is the unique gene identifier (e.g AT1G01010).
-`Start` is an integer value of the starting position from exon-1.
+`GeneIdentifier` is the unique gene identifier (e.g. AT1G01010).
+`Chromosome` is the label of corresponding chromosome (e.g. Chr1)
+`Start` is an integer value of the start position from exon:1.
+`Stop` is an integer value of the stop position from exon:1.
 `Strand` is a string which contains its orientation (forward: +, reverse: -).
 
 In addition some statistics are printed (example):
