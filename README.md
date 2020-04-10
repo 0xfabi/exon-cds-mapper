@@ -125,7 +125,7 @@ Execute task 2:
 ```shell_script
 python ./src/map_reads.py
 ```
-After execution resulting output can be found in `./output_data/read_before_first_exon.tsv`.
+After execution resulting output can be found in `./output_data/reads_before_first_exon.tsv`.
 Because `bam` can be really large (~20GB) execution will take a long time.
 
 # Links

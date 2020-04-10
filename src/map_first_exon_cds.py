@@ -12,7 +12,7 @@ class ExonCdsMapper:
 
     def __init__(self, path):
         """
-        Init for ExonCdsMapper. Init with path for a given gff file.
+        Init for ExonCdsMapper class. Init with path for a given gff file.
         :param path: str contains path to gff file
         """
         self.path = path
