@@ -120,7 +120,7 @@ def print_statistics(statistics: List):
 def main():
     # adjust data_path for your system in config.ini
     config = configparser.ConfigParser()
-    config.read(os.path.join(os.getcwd().split("src")[0], "config.ini"))
+    config.read(os.path.join(os.getcwd().split("src")[0], "config/config.ini"))
     data_path = config["DATA_PATH"]["path"]
     debug_mode = eval(config["DEBUG_MODE"]["debug"])
     statistics = []  # list contains some statistics which are printed after successful execution

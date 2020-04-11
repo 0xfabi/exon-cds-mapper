@@ -53,7 +53,7 @@ class LeaderlessTranscriptDetector:
 def main():
     # adjust data_path for your system in config.ini
     config = configparser.ConfigParser()
-    config.read(os.path.join(os.getcwd().split("src")[0], "config.ini"))
+    config.read(os.path.join(os.getcwd().split("src")[0], "config/config.ini"))
     threshold = int(config["DETECTION"]["threshold"])
     debug_mode = eval(config["DEBUG_MODE"]["debug"])
 

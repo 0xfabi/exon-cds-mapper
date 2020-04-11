@@ -1,4 +1,8 @@
 # Leaderless transcription in eukaryotes
+This repository is about identifying genes in eukaryotes which are leaderless transcripts.
+Leaderless transcripts are genes where exon:1 starts at the beginning of the gene and start position of exon:1 equals start position of cds:1.
+Furthermore, no reads must be located before the first exon (== gene start).
+The following sketch serves as a basis for the following task definitions:
 ![Overview](./overview.jpg)
 
 
@@ -140,7 +144,7 @@ pip install -r ./requirements.txt
 ```
 
 # How to use
-Adjust settings in `./config.ini` by setting path to data files and select whether code should be executed in `DEBUG` mode.
+Adjust settings in `./config/config.ini` by setting path to data files and select whether code should be executed in `DEBUG` mode.
 The debug mode enables multiple prints in the python scripts (e.g. show each row from bam file before processing).
 Because it slows down the processing speed debug mode should only be enabled if the results are not as expected.
 The threshold value is used while detecting leaderless transcripts. Genes are marked as leaderless transcripts if number
