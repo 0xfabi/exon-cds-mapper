@@ -5,7 +5,7 @@
 # Task 1
 For each gene in a given `gff3` file validate if first exon and first CDS have same starting position.
 If they have the same starting position, they are written into output file `./output_data/matching_exon_cds.tsv`.
-In addition there is a second output file (`./output_data/all_exon.tsv`) which contains positions of exon-1 for each gene identifier.
+In addition there is a second output file (`./output_data/all_exon.tsv`) which contains positions of exon:1 for each unique gene identifier.
 
 Keep in mind that each gene is located on forward or reverse strand of the DNA sequence.
 
@@ -54,24 +54,31 @@ In addition some statistics are printed (example):
 ```text
 Total number of entries in gff file: 789890
 Total number of genes: 69803
-Number of matches where start position are equal (exon:1 == cds:1): 4201
+Number of matches where start positions are equal (exon:1 == cds:1): 4201
 Proportion of genes with matching exon:1 and cds:1: 6.02%
 ```
 
 # Task 2
-
-![Schematic](./task2_schematic.png)
-Validate if mapped reads overlap position of first exon in a way they start before the first exon position.
+To determine if the possible candidates from task 1 (exon:1 == cds:1) are leaderless transcripts
+there should not be any reads before exon:1. 
+The read data is stored in a binary sam (`bam`) file. The following steps are done by the `map_reads.py` script.
 For each read from `bam` file q_name (read identifier), chromosome name (e.g. Chr1), start/stop position and strand orientation are extracted.
+In the next step the read has to be mapped to a gene identifier.
+This is done by using the results from task 1.
+By grouping the results from task 1 by chromosome (e.g. Chr1, Chr2, ...) a subset can be used to determine the corresponding gene for the read.
+The start and stop position of the read is used to check if it overlaps with the start position of exon:1 from a possible leaderless transcript candidate gene of the same chromosome.
+These candidates are genes where start position of exon:1 and cds:1 are equal and this start is also the beginning of the gene.
+If a read overlaps with this start position it is saved in `reads_before_first_exon.tsv` output file and linked to the gene identifier.
 
-First the reads have to be mapped to a gene identifier. This is done by grouping the data from gff file by chromosome name and strand orientation.
-For the resulting subset of same chromosome name and strand orientation the gene identifier is selected where the stop position of the read is between
-the start and stop position of an entry (same as example entry mentioned in Task 1) from specified grouped gff file data.
-If a match exists the assumption is made that the read corresponds to the gene identifier from matching entry.
+After mapping the reads to corresponding gene identifiers the `detect_leaderless_transcripts.py` script is used to find leaderless transcripts.
+For each gene identifier the number of mapped reads is counted and saved to `number_mapped_reads.tsv` output file.
+By defining a threshold value in the `config.ini` genes are detected as leaderless transcripts if their number of reads is below
+the defined threshold value. The gene identifiers of the leaderless transcripts are stored in output file `leaderless_transcripts_threshold_<VALUE>.tsv`.
 
-Second the start position of given read matched by gene identifier is used to validate if the read starts before the exon:1 position (for matching the table `./output_data/all_exon.tsv` is used).
+The workflow process is visualized in the following schematic:
+![Schematic](./task2_schematic.png)
 
-If the read can assigned to gene identifier and starts before exon:1 position of corresponding gene, the read identifier is written to output file `./output_data/read_before_first_exon.tsv`
+
 ## corresponding:
 code: ./src/map_reads.py
 
@@ -111,6 +118,7 @@ first output file is tab separated and contains following columns (including exa
 `Number_mapped_reads` is the number of reads which are overlapping exon:1 start position of corresponding gene.
 
 second output file: output_data/leaderless_transcripts_threshold_<VALUE>.tsv
+The <VALUE> is placeholder and represents the threshold value defined in `config.ini`.
 
 second output file is tab separated and contains gene identifiers of genes which are detected as leaderless transcripts
 It has following columns (including example entry):
@@ -128,11 +136,11 @@ Code is written in Python 3.7.4. Required python packages are:
 
 Install all requirements easily by using pip and the given [requirements.txt](./requirements.txt):
 ```shell script
-pip install -r requirements.txt
+pip install -r ./requirements.txt
 ```
 
 # How to use
-Adjust settings in `config.ini` by setting path to data files and select whether code should be executed in `DEBUG` mode.
+Adjust settings in `./config.ini` by setting path to data files and select whether code should be executed in `DEBUG` mode.
 The debug mode enables multiple prints in the python scripts (e.g. show each row from bam file before processing).
 Because it slows down the processing speed debug mode should only be enabled if the results are not as expected.
 The threshold value is used while detecting leaderless transcripts. Genes are marked as leaderless transcripts if number
@@ -149,19 +157,20 @@ threshold = 4
 ```
 `path` defines the path to folder which contains `gff` and `bam` data file.
 `debug` is a boolean value (True/False).
-`threshold` defines the maximum number of allowed mapped reads for a gene identifier.
+`threshold` defines the maximum number of allowed mapped reads for a gene identifier. 
+In this example all genes considered as leaderless transcripts if 4 or less reads can be mapped to the gene.
 
 
 Execute task 1:
 ```shell_script
-python ./src/map_first_exon_cds.py
+python3 ./src/map_first_exon_cds.py
 ```
 After execution resulting output can be found in `./output_data/matching_exon_cds.tsv`.
 
 Execute task 2:
 ```shell_script
-python ./src/map_reads.py
-python ./src/detect_leaderless_transcripts.py
+python3 ./src/map_reads.py
+python3 ./src/detect_leaderless_transcripts.py
 ```
 After execution of `map_reads.py` resulting output can be found in `./output_data/reads_before_first_exon.tsv`.
 After execution of `detect_leaderless_transcripts.py` resulting output files are
