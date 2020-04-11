@@ -35,10 +35,10 @@ code: ./src/map_first_exon_cds.py
 input file: gff file (version 3) is provided by course organizers
 
 example entry from given `gff` file:
-
-| ##gff-version   3| | |||||||
-| --- | ---| --- | --- | --- | --- | --- | --- | --- |
-| Chr1 |	Araport11	| gene |	3631 |	5899 |	. |	+ |	. |	ID=AT1G01010;Name=AT1G01010;Note=NAC domain containing protein 1;symbol=NAC001;some more explanantion ...additional information |
+```text
+##gff-version   3
+Chr1	Araport11	gene	3631	5899	.	+	.	ID=AT1G01010;Name=AT1G01010;Note=NAC domain containing protein 1;symbol=NAC001;some more explanantion ...additional information
+```
 
 output file: ./output_data/matching_exon_cds.tsv
 
