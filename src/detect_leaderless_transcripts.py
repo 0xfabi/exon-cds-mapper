@@ -3,37 +3,50 @@
 import configparser
 import csv
 import os
-from typing import List
+from typing import Dict, List
 
 
 class LeaderlessTranscriptDetector:
 
-    def __init__(self, mapped_reads_path: str, threshold: int):
+    def __init__(self, reads_path: str, threshold: int):
         """
-        Init for LeaderlessTranscriptDetector class. Init with path for a given tsv file containing gene identifiers
-        and number of corresponding mapped reads and threshold value which defines a leaderless transcript
+        Init for LeaderlessTranscriptDetector class.
+        For each gene identifier count number of corresponding matched overlapping reads.
+        A gene is detected as leaderless transcript if the number of matched reads is below threshold.
         :param mapped_reads_path: str contains path to input tsv file
         :param threshold: maximum number of allowed mapped reads for a gene identifier
         """
-        self.path = mapped_reads_path
+        self.reads_path = reads_path
         self.threshold = threshold
 
-    def get_leaderless_transcripts(self) -> List:
+    def count_mapped_reads_for_gene(self) -> Dict:
         """
-        Find all leaderless transcripts after reads were mapped to a gene identifier.
-        Only choose gene identifiers where the number of mapped reads is beyond threshold.
-        :return: List contains gene identifiers of leaderless transcripts
+        Count number of mapped overlapping reads for each gene identifier.
+        :return: Dict contains gene identifier as key and number of mapped overlapping reads as value
         """
-        leaderless_transcripts_list = []
-        with open(self.path, 'r') as in_file:
+        count_reads_dict = dict()
+        with open(self.reads_path, 'r') as in_file:
             tsv_reader = csv.reader(in_file, delimiter='\t')
             next(tsv_reader)  # skip header
             for row in tsv_reader:
                 gene_id = row[0]
-                read_count = int(row[1])
-                # add gene identifier to list if number of mapped reads is beyond threshold
-                if read_count <= self.threshold:
-                    leaderless_transcripts_list.append((gene_id, read_count))
+                if gene_id not in count_reads_dict:
+                    count_reads_dict[gene_id] = 0
+                else:
+                    count_reads_dict[gene_id] += 1
+        return count_reads_dict
+
+    def get_leaderless_transcripts(self, count_reads_dict: Dict) -> List:
+        """
+        Find all leaderless transcripts after reads were mapped to a gene identifier.
+        Only choose gene identifiers where the number of mapped reads is below threshold.
+        :param count_reads_dict: dict contains gene identifier as key and number of mapped overlapping reads as value
+        :return: List contains gene identifiers of leaderless transcripts
+        """
+        leaderless_transcripts_list = []
+        for gene_id, number_reads in count_reads_dict.items():
+            if number_reads <= self.threshold:
+                leaderless_transcripts_list.append(gene_id)
         return leaderless_transcripts_list
 
 
@@ -44,19 +57,33 @@ def main():
     threshold = int(config["DETECTION"]["threshold"])
     debug_mode = eval(config["DEBUG_MODE"]["debug"])
 
-    in_path = os.path.join(os.getcwd().split("src")[0], "output_data/number_mapped_reads.tsv")
-    out_path = os.path.join(os.getcwd().split("src")[0], "output_data/leaderless_transcripts.tsv")
+    in_path = os.path.join(os.getcwd().split("src")[0], "output_data/reads_before_first_exon.tsv")
+    count_reads_out_path = os.path.join(os.getcwd().split("src")[0], "output_data/number_mapped_reads.tsv")
+    leaderless_transcripts_out_path = os.path.join(os.getcwd().split("src")[0],
+                                                   f"output_data/leaderless_transcripts_threshold_{threshold}.tsv")
 
-    leaderless_transcript_detection = LeaderlessTranscriptDetector(mapped_reads_path=in_path, threshold=threshold)
-    leaderless_transcripts_list = leaderless_transcript_detection.get_leaderless_transcripts()
+    ltd = LeaderlessTranscriptDetector(reads_path=in_path, threshold=threshold)
+    count_reads_dict = ltd.count_mapped_reads_for_gene()
+    leaderless_transcripts_list = ltd.get_leaderless_transcripts(count_reads_dict=count_reads_dict)
 
-    with open(out_path, 'w', newline='') as out_file:
+    # write all genes and number of overlapping reads into file
+    with open(count_reads_out_path, 'w',
+              newline='') as count_out_file:
+        # write gene identifier and number of corresponding mapped reads into file
+        count_fieldnames = ["GeneIdentifier", "Number_mapped_reads"]
+        count_writer = csv.DictWriter(count_out_file, fieldnames=count_fieldnames, delimiter='\t')
+        count_writer.writeheader()
+        for identifier, number_reads in count_reads_dict.items():
+            if debug_mode:
+                print(f"GeneIdentifier: {identifier}, number of mapped reads: {number_reads}")
+            count_writer.writerow({"GeneIdentifier": identifier, "Number_mapped_reads": number_reads})
+
+    # write leaderless transcripts for given threshold into files
+    with open(leaderless_transcripts_out_path, 'w', newline='') as out_file:
         fieldnames = ["GeneIdentifier"]
         writer = csv.DictWriter(out_file, fieldnames=fieldnames, delimiter='\t')
         writer.writeheader()
-
-        for leaderless_transcript in leaderless_transcripts_list:
-            gene_id = leaderless_transcript[0]
+        for gene_id in leaderless_transcripts_list:
             if debug_mode:
                 print(f"GeneIdentifier: {gene_id}")
             writer.writerow({"GeneIdentifier": gene_id})
