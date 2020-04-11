@@ -161,13 +161,13 @@ threshold = 4
 In this example all genes considered as leaderless transcripts if 4 or less reads can be mapped to the gene.
 
 
-Execute task 1:
+## Execute task 1:
 ```shell_script
 python3 ./src/map_first_exon_cds.py
 ```
 After execution resulting output can be found in `./output_data/matching_exon_cds.tsv`.
 
-Execute task 2:
+## Execute task 2:
 ```shell_script
 python3 ./src/map_reads.py
 python3 ./src/detect_leaderless_transcripts.py
